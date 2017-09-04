@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        /* Always set the map height explicitly to define the size of the div
+         * element that contains the map. */
+        #map {
+            height: 100%;
+        }
+        /* Optional: Makes the sample page fill the window. */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-size: 12px;
+        }
+        #overlay {
+            position: absolute;
+            top: 10px; left: 10px;
+            width: 350px;
+            padding: 20px;
+            font-size: 1em; font-family: Roboto;
+            background: #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.25);
+        }
+        fieldset {
+            display: block;
+            border: 1px solid #ccc;
+            border-radius: 0.2em;
+            margin: 0 0 20px;
+            box-sizing: border-box;
+        }
+        input[type="text"] {
+            display: block;
+            border: 1px solid #ccc;
+            border-radius: 0.2em;
+            box-sizing: border-box;
+        }
+        input[type="range"] {
+            width: 100%;
+            box-sizing: border-box;
+        }
+        input[type="submit"] {
+            box-sizing: border-box;
+            border: 1px solid #ccc; background: #eee;
+            border-radius: 0.2em;
+            font-size: 1.5em; font-weight: 200;
+            padding: 0.5em 0.9em;
+            /*text-transform: uppercase;*/
+        }
+        form .options {
+            display: flex;
+            padding: 0 10px;
+            margin: 0 -20px;
+        }
+        form .options .row {
+            flex: 1;
+            margin: 0 10px;
+        }
+        form .row {
+            padding: 5px 0;
+            text-align: center;
+        }
+        form .row input {
+            margin: 0 auto;
+            display: block;
+        }
+        form label {
+            font-weight: 700;
+            font-size: 0.9em;
+        }
+        form input {
+        }
+        #shape {
+            border: none; background: #fafafa; color: #999;
+            padding: 0.5em 0.5em; width: 100%;
+            margin: 0.4em 0;
+            font-size: 1em; font-weight: 100;
+        }
+        #query {
+            padding: 0.5em; margin-bottom: 20px;
+            font-size: 2em; font-weight: 200;
+            width: 100%;
+        }
+        ::-webkit-input-placeholder { /* Chrome */
+            color: #eee;
+        }
+        .row .button {
+            border: 1px solid #ccc; border-radius: 2px;
+            display: block; padding: 5px; width: 40px; height: 40px; margin: 5px auto 8px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.8em;
+        }
+        .row .button.active {
+            outline: none;
+            border-color: #9ecaed;
+            box-shadow: 0 0 2px 2px #9ecaed;
+
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="overlay">
+        <form id="customize">
+
+
+            <fieldset id="fieldset-area">
+                <legend>Area</legend>
+                <!--<i>Choose and draw</i>-->
+
+
+                <div class="options">
+                    <div class="row">
+                        <span class="button" data-type="rect">rect</span>
+                    </div>
+                    <div class="row">
+                        <span class="button" data-type="shape">custom shape</span>
+                    </div>
+                    <div class="row">
+                        <span class="button" data-type="distance">distance</span>
+                    </div>
+                    <div class="row">
+                        <span class="button" data-type="point">point</span>
+                    </div>
+                </div>
+
+                <div class="options">
+                    <div class="row">
+                        <label>Min cell lvl: <span></span></label>
+                        <input type="range" id="startlevel" min="1" max="20" step="1" value="5">
+                    </div>
+                    <div class="row">
+                        <label>Max cell lvl: <span></span></label>
+                        <input type="range" id="endlevel" min="1" max="20" step="1" value="15">
+                    </div>
+                    <div class="row">
+                        <label>Max cells: <span></span></label>
+                        <input type="range" id="maxcells" min="1" max="500" step="1" value="5">
+                    </div>
+                </div>
+
+                <input type="text" readonly="readonly" id="shape" placeholder="cells hashes will be displayed here" />
+
+            </fieldset>
+
+            <input type="text" id="query" placeholder="what are you looking for?" autocomplete="off" />
+
+            <!--<fieldset>-->
+                <!--<legend>Aggregation</legend>-->
+                <!--<div class="options">-->
+                    <!--<div class="row">-->
+                        <!--<label>Aggregation lvl: <span></span></label>-->
+                        <!--<input type="range" id="aggreagationlevel" min="1" max="12" step="1" value="9">-->
+                    <!--</div>-->
+                    <!--<div class="row">-->
+                        <!--<label for="pins">Show pins</label><br/>-->
+                        <!--<input type="checkbox" id="pins" name="show_pins" />-->
+                    <!--</div>-->
+                    <!--<div class="row">-->
+                    <!--</div>-->
+                <!--</div>-->
+            <!--</fieldset>-->
+
+            <input type="submit" value="search"/>
+        </form>
+    </div>
+    <script>
+        var map;
+        var polygon;
+        var drawing = false;
+        var drawingType = false;
+        var startPoint = null;
+        var polygonPoints = [];
+        var timeout;
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 9,
+                center: new google.maps.LatLng(52.3871873,16.7518891),
+                gestureHandling: 'auto',
+//                mapTypeId: 'terrain'
+            });
+
+            google.maps.event.addListener(map, 'mousedown', function(event)
+            {
+                var activeButton = $('.button.active');
+                if (activeButton.length) {
+                    var type = activeButton.data('type');
+                    drawingType = type;
+                    if (polygon) {
+                        polygon.setMap(null);
+                    }
+                    switch (type) {
+                        case 'rect':
+                            drawing = true;
+                            startPoint = event.latLng;
+                            polygon = new google.maps.Rectangle({
+                                strokeColor: '#006fff',
+                                strokeOpacity: 0.9,
+                                strokeWeight: 1,
+                                fillColor: '#006fff',
+                                fillOpacity: 0.05,
+                                clickable: false,
+                                map: map,
+                                bounds: {
+                                    north: event.latLng.lat(),
+                                    south: event.latLng.lat(),
+                                    east: event.latLng.lng(),
+                                    west: event.latLng.lng()
+                                }
+                            });
+                            break;
+                        case 'shape':
+                            drawing = true;
+                            polygonPoints = [event.latLng];
+                            timeout = true;
+                            polygon = new google.maps.Polygon({
+                                strokeColor: '#006fff',
+                                strokeOpacity: 0.4,
+                                strokeWeight: 1,
+                                fillColor: '#006fff',
+                                fillOpacity: 0.05,
+                                clickable: false,
+                                map: map,
+                                paths: polygonPoints
+                            });
+                            break;
+                        case 'distance':
+                            drawing = true;
+                            startPoint = event.latLng;
+                            polygon = new google.maps.Circle({
+                                strokeColor: '#006fff',
+                                strokeOpacity: 0.8,
+                                strokeWeight: 1,
+                                fillColor: '#006fff',
+                                fillOpacity: 0.05,
+                                clickable: false,
+                                map: map,
+                                center: event.latLng,
+                                radius: 0
+                            });
+                            break;
+                        case 'point':
+                            startPoint = event.latLng;
+                            polygon = new google.maps.Marker({
+                                position: event.latLng,
+                                map: map,
+                                clickable: false,
+                            });
+                            break;
+                    }
+
+                    event.stop();
+                    return false;
+                }
+            });
+            google.maps.event.addListener(map, 'mousemove', function(event) {
+                if (!drawing) {
+                    return;
+                }
+                var activeButton = $('.button.active');
+                if (activeButton.length) {
+                    var type = activeButton.data('type');
+                    switch (type) {
+                        case 'rect':
+                            polygon.setBounds(new google.maps.LatLngBounds({
+                                lat: Math.max(startPoint.lat(), event.latLng.lat()), lng: Math.min(startPoint.lng(), event.latLng.lng())
+                            }, {
+                                lat: Math.min(startPoint.lat(), event.latLng.lat()), lng: Math.max(startPoint.lng(), event.latLng.lng())
+                            }));
+                            break;
+                        case 'distance':
+                            polygon.setRadius(google.maps.geometry.spherical.computeDistanceBetween(startPoint, event.latLng));
+                            break;
+                        case 'shape':
+                            if (timeout) {
+                                timeout = false;
+                                window.setTimeout(function () {
+                                    timeout = true;
+                                }, 50);
+                                polygonPoints.push(event.latLng);
+                                polygon.setPaths(polygonPoints);
+                            }
+                            break;
+                    }
+                }
+            });
+            google.maps.event.addListener(map, 'mouseup', function(event) {
+                if (!drawing) {
+                    return;
+                }
+
+                drawing = false;
+                calcArea();
+
+            });
+
+        }
+
+
+
+        function calcArea() {
+            if (!drawingType) {
+                return;
+            }
+            var options = {};
+            switch (drawingType) {
+                case 'rect':
+                    options = {
+                        ne: polygon.getBounds().getNorthEast().lat() + ',' + polygon.getBounds().getNorthEast().lng(),
+                        sw: polygon.getBounds().getSouthWest().lat() + ',' + polygon.getBounds().getSouthWest().lng()
+                    };
+                    break;
+                case 'point':
+                    options = {
+                        ne: polygon.getBounds().getNorthEast().lat() + ',' + polygon.getBounds().getNorthEast().lng(),
+                        sw: polygon.getBounds().getSouthWest().lat() + ',' + polygon.getBounds().getSouthWest().lng()
+                    };
+                    break;
+                case 'shape':
+                    options = {
+                        ne: polygon.getBounds().getNorthEast().lat() + ',' + polygon.getBounds().getNorthEast().lng(),
+                        sw: polygon.getBounds().getSouthWest().lat() + ',' + polygon.getBounds().getSouthWest().lng()
+                    };
+                    break;
+                case 'dist':
+                    options = {
+                        center: polygon.getCenter().lat() + ',' + polygon.getCenter().lng(),
+                        radius: polygon.getRadius()
+                    };
+                break;
+            }
+            $('#shape').val('loading ...');
+            $.ajax({
+                url: 's2.php?action=region-coverer',
+                method: 'POST',
+                data: $.extend({
+                    minLevel: $('#startlevel').val(),
+                    maxLevel: $('#endlevel').val(),
+                    maxCells: $('#maxcells').val(),
+                    type: drawingType,
+                }, options)
+
+            }).done(function(data) {
+                clearCells();
+                data.cells.forEach(displayPolygon);
+
+                ids = '';
+                data.cells.forEach(function(cell) {
+                    ids = (ids ? ids + ' ' : '') + cell.id;
+                });
+                $('#shape').val(ids);
+
+            });
+        }
+
+        var cells = [];
+        function displayPolygon(cell) {
+            var coordinates = cell.coordinates;
+            var color =  '#006fff';
+            var p = new google.maps.Polygon({
+                paths: coordinates.map(function (c) { return ({ lat: c[0], lng: c[1] }); }),
+                fillColor: color,
+                fillOpacity: 0.15,
+                strokeColor: color,
+                strokeOpacity: 0.2,
+                strokeWeight: 1,
+                geodesic: true,
+                clickable: false,
+            });
+            p.setMap(map);
+            cells.push(p);
+//            google.maps.event.addListener(p, 'mouseover', function () { return console.log(cell.count); });
+        }
+        function clearCells() {
+            cells.forEach(function (cell) { return cell.setMap(null); });
+            cells = [];
+        }
+
+
+        var markers = [];
+        function search() {
+            var q = $('#query').val();
+            var s2 = $('#shape').val();
+            $('#query').data('val', q);
+
+            $.ajax({
+                url: 's2.php?action=search',
+                method: 'POST',
+                data: {
+                    q: q,
+                    s2: s2,
+                }
+
+            }).done(function(data) {
+                clearResults();
+                data.results.forEach(displayResult);
+            });
+        }
+
+        function clearResults() {
+            markers.forEach(function (marker) { return marker.setMap(null); });
+            markers = [];
+        }
+
+        function displayResult(data) {
+            console.log({ lat: data.lat, lng: data.lng });
+            var m = new google.maps.Marker({
+                position: { lat: parseFloat(data.lat), lng: parseFloat(data.lng) },
+                map: map,
+//                clickable: false,
+            });
+            google.maps.event.addListener(m, 'mouseover', function() {
+                $('#query').val(data.title);
+            });
+            google.maps.event.addListener(m, 'mouseout', function() {
+                $('#query').val($('#query').data('val'));
+            });
+            markers.push(m);
+        }
+
+        jQuery(function($){
+            var form = $('#customize');
+            var inputs = form.find('input[type="range"]');
+            var buttons = form.find('.button');
+            inputs.on('input', function() {
+                $(this).parent().find('span').text(this.value);
+            });
+            inputs.trigger('input');
+            inputs.on('change', function() {
+//            refresh();
+            });
+            buttons.on('click', function() {
+
+                $(this).toggleClass('active');
+                buttons.not($(this)).removeClass('active');
+
+                if (map) {
+
+                    map.setOptions({'gestureHandling': buttons.filter('.active').length ? 'none' : 'autp'});
+                }
+            });
+
+            $('#fieldset-area input[type="range"]').on('change', function() {
+                calcArea();
+            });
+
+            form.on('submit', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                search();
+            })
+        });
+    </script>
+
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=&callback=initMap">
+    </script>
+
+
+    <script
+            src="https://code.jquery.com/jquery-3.1.1.min.js"
+            integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
+            crossorigin="anonymous"></script>
+</body>
+</html>
