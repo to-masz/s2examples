@@ -1,0 +1,24 @@
+{
+    "name": "tomasz.gramza/s2examples",
+    "type": "project",
+    "authors": [
+        {
+            "name": "Tomasz Gramza",
+            "email": "to@g.pl"
+        }
+    ],
+    "require": {
+        "nicklasw/s2-geometry-library-php": "dev-master as 2.0.0",
+        "guzzlehttp/psr7": "^1.4",
+        "elasticsearch/elasticsearch": "^5.3"
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/to-masz/s2-geometry-library-php.git"
+        }
+    ],
+    "autoload": {
+        "psr-4": { "tomasz\\s2examples\\": "src/" }
+    }
+}
