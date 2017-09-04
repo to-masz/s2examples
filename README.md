@@ -4,10 +4,10 @@ This repository contains the complete example on how to use Google's S2 library 
 
 It is a live example from my presentation **Having fun with geospatial data in your software. An introduction to Google's S2 geometry library.**
 
-#### Preliminary notes
+## Preliminary notes
 
 S2 library is written originally in C++. It was ported to several languages, unfortunately there is no really good port in PHP. 
-**It gives you great opportunity to contribute to PHP world and rewrite the library as other people did for Java or Python**.
+**It gives you a great opportunity to contribute to PHP world and rewrite the library as other people did for Java or Python**.
 
 I recommend to use `NicklasWallgren/s2-geometry-library-php` fork, that is a fork of another fork of another fork of ... Simply everyone in that chain have added or fixed quite important part of the library. Nicklas seems to be one, that has time to review and merge all pull requests.
  
@@ -18,9 +18,9 @@ composer require NicklasWallgren/s2-geometry-library-php
 For now there are few changes pending, so this repo uses my fork.
 
 
-#### Simple examples
+## Simple examples
 
-##### S2 cell identifiers
+### S2 cell identifiers
 
 Check `utils/examples.php` for simple examples of using `S2CellId` class.
 
@@ -72,7 +72,7 @@ The result of the code is (please note the difference with previous output):
 47045b
 ```
 
-##### S2 cell neighbours
+### S2 cell neighbours
 
 As the cell identifier belongs to quadtree, it has only 3 neighbours in the tree (other nodes from the same parent node).
 But each cell has 8 neighbours, fortunately it is very easy to get them all.
@@ -125,7 +125,7 @@ Please note 4th, 5th and 7th neighbour are from the same parent node and are ver
 47045b336b570903
 ```
 
-#### Indexing S2 cells
+## Indexing S2 cells
 
 Here I use the Elasticsearch as a storage for S2 cells. I recommend official docker image and PHP client `elasticsearch/elasticsearch`.
 
@@ -163,7 +163,7 @@ while (!$s2->isFace()) {
 Check the indexer code for more details.
 
 
-#### Running web example
+## Running web example
 
 After indexing a data run PHP webserver and check [localhost:8080](http://localhost:8080).
 You should also provide your Key for accessing Google Maps Javascript API in `web/index.html`. 
@@ -172,7 +172,7 @@ You should also provide your Key for accessing Google Maps Javascript API in `we
 php -S localhost:8080 -t web/
 ```
 
-##### Region convering
+### Region covering
 
 Of the main goal of S2 library is to provide efficient way to approximate even very complicated polygons. 
 
@@ -196,9 +196,9 @@ As a result we have a list of `S2CellId` objects in `$covering`. They respect th
 
 See `src/RegoinCovererAction.php` for more details.
 
-##### Querying 
+### Querying 
 
-And at the end one of the coolest search technology combinations out there are the ability to combine geo and search. 
+And at the end one of the coolest search technology combinations out there - the ability to combine geo and search. 
 
 Querying the Elasticsearch in our configuration for this combination is very easy.
 
